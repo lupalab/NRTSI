@@ -1,5 +1,7 @@
 # NRTSI
-This is the official repository of the paper "NRTSI: Non-Recurrent Time Series Imputation for Irregularly-sampled Data"
+This is the official repository of the paper "NRTSI: Non-Recurrent Time Series Imputation"
+
+https://arxiv.org/abs/2102.03340
 
 NRTSI is a state-of-the-art time series imputation model that this broadly applicable to regularly-sampled time series, irregularly-sampled time series, time series with partially observed dimensions and time series requiring stochastic imputation.
 
