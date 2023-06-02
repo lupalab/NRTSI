@@ -73,18 +73,15 @@ def compute_gp_uncertainty(obs_list, next_list, l=20):
     idx = np.where(uncertainty < 2 * min_uncertainty)[0].tolist()
     return [next_list[each] for each in idx]
 
-def get_next_to_impute(data, mask, mode, certain=None):
+def get_next_to_impute(data, mask, mode):
     target_data = data.clone()
     data_masked = data * torch.Tensor(mask[:, None, :]).cuda()
     seq_length = mask.shape[0]
     bs = data.shape[1]
-    if mode in ['min', 'max', 'certain']:
+    if mode in ['min', 'max']:
         num_obs_per_t = mask.sum(1)
         if mode == 'min':
             next_list = np.argwhere(num_obs_per_t == np.amin(num_obs_per_t))[:,0].tolist()
-        elif mode == 'certain':
-            next_list = np.argwhere(certain == np.amax(certain))[:,0].tolist()
-            certain[next_list] = -1
         else:
             num_obs_per_t[num_obs_per_t==mask.shape[1]] = -1
             next_list = np.argwhere(num_obs_per_t == np.amax(num_obs_per_t))[:,0].tolist()
@@ -111,9 +108,8 @@ def get_next_to_impute(data, mask, mode, certain=None):
         mask = np.ones_like(mask)
     return obs_data, obs_list, next_data, next_list, target_data, mask
 
-def run_imputation(main_model, certainty_model, mode, exp_data, num_missing, max_level, confidence, train_mean, test_mean, batch_size=128, fig_path=None, save_all_imgs=False, dataset='billiard', gp=0):
+def run_imputation(main_model, mode, exp_data, num_missing, max_level, confidence, train_mean, test_mean, batch_size=128, fig_path=None, save_all_imgs=False, dataset='billiard', gp=0):
     main_model.eval()
-    certainty_model.eval()
     #inds = np.random.permutation(exp_data.shape[0])
     inds = np.arange(exp_data.shape[0])
     i = 0
@@ -155,24 +151,17 @@ def run_imputation(main_model, certainty_model, mode, exp_data, num_missing, max
             num_missing = 730
         elif dataset == 'air_quality':
             num_missing = 53
-        #num_missing = get_num_missing(train, epoch, total_epoch, data.shape[0], dataset)
+
         missing_idx = np.random.choice(np.arange(d_data*len_data), num_missing, replace=False)
         mask = np.ones(d_data*len_data)
         mask[missing_idx] = 0
         mask = mask.reshape(len_data, d_data)
         init_mask = mask
 
-        obs_data, obs_list, next_data, next_list, target_data, mask = get_next_to_impute(data, mask, "all")
-        certainty = certainty_model(obs_data, obs_list, next_data, next_list)
-        
-        certainty = F.softplus(certainty[:,:,data.shape[-1]:]).detach()
-        certainty = certainty * (1 - torch.Tensor(init_mask[None,:,:]).cuda())
-        certainty = torch.sum(certainty,[0,2]) / (torch.Tensor(1 - init_mask).cuda().sum(1) + 1e-6)
-        certainty = certainty.cpu().numpy()
         
         mask = init_mask
         while mask.sum() < mask.shape[0] * mask.shape[1]:
-            obs_data, obs_list, next_data, next_list, target_data, mask = get_next_to_impute(data, mask, "certain", certainty)
+            obs_data, obs_list, next_data, next_list, target_data, mask = get_next_to_impute(data, mask, "min")
             prediction = main_model(obs_data, obs_list, next_data, next_list)
             prediction = prediction.detach()
             pred_mask = next_data[:,:,int(next_data.shape[-1]/2):]

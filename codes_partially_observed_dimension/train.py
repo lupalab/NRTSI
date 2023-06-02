@@ -35,7 +35,7 @@ torch.autograd.set_detect_anomaly(True)
 
 # creat exp dir
 if not os.path.exists(params.exp_dir):
-    os.mkdir(params.exp_dir)
+    os.makedirs(params.exp_dir, exist_ok=True)
 if not os.path.exists(os.path.join(params.exp_dir, 'gen')):
     os.mkdir(os.path.join(params.exp_dir, 'gen'))
 if not os.path.exists(os.path.join(params.exp_dir, 'ckpt')):
